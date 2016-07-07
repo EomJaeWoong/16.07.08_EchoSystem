@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BUF_SIZE 1000
+#define BUF_SIZE 30000
+#pragma comment(lib, "winmm.lib") 
 
 void err_display(char *msg)
 {
@@ -49,23 +50,23 @@ int main()
 	{
 		memset(buf, 0, BUF_SIZE);
 
-		for (int iCnt = 0; iCnt < BUF_SIZE; iCnt++)
+		for (int iCnt = 0; iCnt < rand() % BUF_SIZE - 1; iCnt++)
 		{
-			buf[iCnt] = (char)(rand() % 256);
+			buf[iCnt] = (char)rand();
 		}
 
-		retval = send(sock, buf, BUF_SIZE, 0);
+		retval = send(sock, buf, strlen(buf), 0);
+		printf("Send data..");
 		if (retval == SOCKET_ERROR)
 		{
 			err_display("send()");
 			break;
 		}
-		printf("Send Data...\n");
 		Sleep(1000);
 	}
 
 	closesocket(sock);
-
+	
 	WSACleanup();
 
 	return 0;

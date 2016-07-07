@@ -1,8 +1,10 @@
 #include <winsock2.h>
+#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BUF_SIZE 1000
+#define BUF_SIZE 30000
+#pragma comment(lib, "winmm.lib") 
 
 void err_display(char *msg)
 {
@@ -21,6 +23,7 @@ int main()
 {
 	WSADATA wsa;
 	int retval;
+	DWORD tick;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return -1;
@@ -76,8 +79,14 @@ int main()
 		///////////////////////////////////////////////////////////////////////
 		while (1)
 		{
-			recv(client_sock, buf, BUF_SIZE, 0);
-			printf("Server : %s", buf);
+			retval = recv(client_sock, buf, BUF_SIZE, 0);
+			if (retval == 0){
+				printf("end Connect\n\n");
+				break;
+			}
+
+			system("cls");
+			printf("Server  %.2d bytes,   Packet : %d", retval, client_sock);
 		}
 	}
 
