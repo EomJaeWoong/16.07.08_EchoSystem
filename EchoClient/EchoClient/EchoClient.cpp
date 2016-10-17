@@ -21,53 +21,59 @@ void err_display(char *msg)
 
 int main()
 {
-	WSADATA wsa;
 	int retval;
+	int iPort = 19001;
 
+	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return -1;
 
-	///////////////////////////////////////////////////////////
-	// socket
-	///////////////////////////////////////////////////////////
-	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+	SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock == INVALID_SOCKET)		err_display("socket()");
 
-	///////////////////////////////////////////////////////////
-	// connect
-	///////////////////////////////////////////////////////////
-	SOCKADDR_IN serverAddr;
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(9000);
-	InetPton(AF_INET, L"127.0.0.1", &serverAddr.sin_addr);
+	BOOL bEnable = TRUE;
+	retval = setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&bEnable, sizeof(bEnable));
+	if (retval == SOCKET_ERROR)	err_display("setsockopt()");
 
-	retval = connect(sock, (SOCKADDR *)&serverAddr, sizeof(serverAddr));
-	if (retval == SOCKET_ERROR)		err_display("connect()");
+	SOCKADDR_IN sockaddr;
+	memset(&sockaddr, 0, sizeof(sockaddr));
+	sockaddr.sin_family = AF_INET;
+	sockaddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-	char buf[BUF_SIZE];
+	char cDatagram[10] = { 0xff, 0xee, 0xdd, 0xaa, 0x00, 0x99, 0x77, 0x55, 0x33, 0x11 };
+	char buf[100];
 
 	while (1)
 	{
-		memset(buf, 0, BUF_SIZE);
+		if (iPort > 19100)	iPort = 19001;
+		sockaddr.sin_port = htons(iPort);
 
-		for (int iCnt = 0; iCnt < rand() % BUF_SIZE - 1; iCnt++)
+		retval = sendto(sock, cDatagram, sizeof(cDatagram), 0, (SOCKADDR *)&sockaddr,
+			sizeof(sockaddr));
+
+		FD_SET ReadSet;
+		FD_ZERO(&ReadSet);
+		FD_SET(sock, &ReadSet);
+
+		TIMEVAL Timeval;
+		Timeval.tv_sec = 0;
+		Timeval.tv_usec = 2000;
+
+		retval = select(0, &ReadSet, NULL, NULL, &Timeval);
+		if (retval < 0) err_display("select()");
+
+		else if (retval > 0)
 		{
-			buf[iCnt] = (char)rand();
+			if (FD_ISSET(sock, &ReadSet))
+			{
+				int addrlen = sizeof(sockaddr);
+				retval = recvfrom(sock, buf, sizeof(buf), 0, (SOCKADDR *)&sockaddr,
+					&addrlen);
+				if (retval == SOCKET_ERROR)	err_display("recvfrom()");
+				printf("%s\n", buf);
+			}
 		}
 
-		retval = send(sock, buf, strlen(buf), 0);
-		printf("Send data..");
-		if (retval == SOCKET_ERROR)
-		{
-			err_display("send()");
-			break;
-		}
-		Sleep(1000);
+		iPort++;
 	}
-
-	closesocket(sock);
-	
-	WSACleanup();
-
-	return 0;
 }
